@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>XUPERCOOLNEW</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Arial}
+
+    /* Logo de fondo que ocupa toda la pantalla */
+    body::before{
+      content:"";
+      position:fixed;
+      top:0;left:0;
+      width:100%;height:100%;
+      background:url('https://i.postimg.cc/1tKvvdNH/Picsart-25-12-08-15-38-45-828.png') center/cover no-repeat;
+      opacity:.05; /* muy tenue */
+      z-index:-1;
+    }
+
+    /* Header simplificado y mas compacto */
+    .header{
+      background:#111;
+      padding:3px 12px;
+      text-align:center;
+      font-size:15px;
+      line-height:1.2;
+    }
+
+    .container{
+      display:flex;
+      height:calc(100% - 24px) /* reducido para ganar espacio */
+    }
+
+    /* Visor centrado y responsive */
+    .visor{
+      flex:3;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      background:transparent;
+      position:relative
+    }
+
+    #player{
+      width:100%;
+      max-width:960px;
+      height:100%;
+      max-height:540px;
+      border:0
+    }
+
+    /* Nombre del canal (sin cambios) */
+    #now-playing{
+      position:absolute;
+      bottom:10px;
+      left:10px;
+      color:rgba(255,255,255,.4);
+      font-size:12px;
+      z-index:5;
+      background:none;
+      pointer-events:none;
+    }
+
+    /* Panel de canales ajustado */
+    .channels-container{
+      flex:1.5;
+      min-width:240px;
+      background:#111a; /* levemente transparente para que se vea el logo */
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Buscador pegado arriba */
+    #search-container{
+      position:sticky;
+      top:0;
+      background:#111c;
+      padding:6px 10px;
+      z-index:10;
+    }
+    .search-bar{
+      padding:6px;
+      width:100%;
+      box-sizing:border-box;
+      font-size:15px;
+      border-radius:4px;
+      border:1px solid #555;
+      background:#222;
+      color:#fff;
+    }
+
+    #channelsList{
+      flex:1;
+      overflow-y:auto;
+      padding:0 6px 6px 6px;
+    }
+
+    .btn{
+      display:block;
+      margin:3px 0;
+      padding:6px 10px;
+      background:#007BFF;
+      color:#fff;
+      border:none;
+      border-radius:4px;
+      width:100%;
+      cursor:pointer;
+      font-size:14px;
+      transition:background .3s;
+    }
+    .btn:hover{background:#0056b3}
+    .btn.active{background:#FF0000}
+
+    @media(max-width:768px){
+      .container{flex-direction:column}
+      #player{max-height:40vh}
+    }
+
+    .fullscreen-btn{
+      position:absolute;
+      bottom:20px;
+      right:20px;
+      background:rgba(0,0,0,.5);
+      color:#fff;
+      border:none;
+      padding:8px 12px;
+      cursor:pointer;
+      font-size:13px;
+      border-radius:5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">By * GROUP PIRATAS © *</div>
+   <div class="header">Recuerda : Brave +Vpn (Paises Bajos)</div>
+
+  <div class="container">
+    <div class="visor">
+      <iframe id="player" allow="autoplay; fullscreen" allowfullscreen></iframe>
+      <button class="fullscreen-btn" onclick="goFullscreen()">Pantalla Completa</button>
+      <div id="now-playing">Cargando...</div>
+    </div>
+
+    <div class="channels-container">
+      <div id="search-container">
+        <input type="text" id="searchInput" class="search-bar" placeholder="Buscar canales...">
+      </div>
+      <div id="channelsList"></div>
+    </div>
+  </div>
+
+  <script>
+    const total = 1050;
+    let currentActiveButton = null;
+
+    const channelNames = [
+      /* lista completa de 1050 canales */
+      "Sports Eventos -1","Sports Eventos -2","Sports Eventos -3","Sports Eventos -4","Sports Eventos -5","Sports Eventos -6","Sports Eventos -7","Sports Eventos -8","Sports Eventos -9","Sports Eventos -10","Sports Eventos -11","Sports Eventos -12","Sports Eventos -13","Sports Eventos -14","Sports Eventos -15","Sports Eventos -16","Sports Eventos -17","Sports Eventos -18","Sports Eventos -19","Sports Eventos -20","Sports Eventos -21","Sports Eventos -22","Sports Eventos -23","Sports Eventos -24","Sports Eventos -25","Sports Eventos -26","Sports Eventos -27","Sports Eventos -28","Sports Eventos -29","Sports Eventos -30","Sports Eventos -31","Sports Eventos -32","Sports Eventos -33","Sports Eventos -34","Sky Sports Football UK -35","Sky Sports Arena UK -36","Sky Sports Action UK -37","Sky Sports Main Event -38","Fox Sports 1 USA -39","Tennis Channel -40","EuroSport 1 UK -41","EuroSport 2 UK -42","DAZN LaLiga 2 -43","ESPN USA -44","ESPN2 USA -45","beIN Sports MENA English 3 -46","Polsat Sport Poland -47","Canal+ Sport Poland -48","Sport TV1 Portugal -49","Polsat Sport Extra Poland -50","ABC USA -51","CBS USA -52","NBC USA -53","FOX USA -54","TNT Sports 1 UK -55","Supersport Football -56","EuroSport 1 Poland -57","EuroSport 2 Poland -58","Movistar Liga De Campeones 3 -59","Sky Sports F1 UK -60","beIN Sports MENA English 1 -61","beIN SPORTS 1 Turkey -62","beIN SPORTS 2 Turkey -63","beIN SPORTS 3 Turkey -64","Sky Sports Cricket -65","TUDN USA -66","beIN SPORTS 4 Turkey -67","MULTI SPORT -68","MULTI SPORT -69","Sky Sports Golf UK -70","Eleven Sports 1 Poland -71","Eleven Sports 2 Poland -72","Canal+ Sport 2 Poland -73","Sport TV2 Portugal -74","CANAL+ SPORT 5 Poland -75","TNT Sports 1 UK -76","TNT Sports 1 UK -77","SporTV Brasil -78","SporTV2 Brasil -79","SporTV3 Brasil -80","ESPN Brasil -81","ESPN2 Brasil -82","ESPN3 Brasil -83","Movistar Laliga -84","ESPN4 Brasil -85","TNT Sports 1 UK -86","TNT Brasil -87","Premier Brasil -88","Combate Brasil -89","beIN Sports MENA English 2 -90","beIN Sports MENA 1 -91","beIN Sports MENA 2 -92","beIN Sports MENA 3 -93","beIN Sports MENA 4 -94","beIN Sports MENA 5 -95","beIN Sports MENA 6 -96","beIN Sports MENA 7 -97","beIN Sports MENA Premium 1 -98","beIN Sports MENA Premium 2 -99","beIN Sports MENA Premium 3 -100","Sport Klub 1 Serbia -101","Sport Klub 2 Serbia -102","Sport Klub 3 Serbia -103","Sport Klub 4 Serbia -104","TNT Sports 1 UK -105","TNT Sports 1 UK -106","TNT Sports 1 UK -107","TNT Sports 1 UK -108","TNT Sports 1 UK -109","TNT Sports 1 UK -110","TSN1 -111","TSN2 -112","TSN3 -113","TSN4 -114","TSN5 -115","beIN SPORTS 1 France -116","beIN SPORTS 2 France -117","beIN SPORTS 3 France -118","RMC Sport 1 France -119","RMC Sport 2 France -120","TNT Sports 1 UK -121","TNT Sports 1 UK -122","Astro SuperSport 1 -123","Astro SuperSport 2 -124","Astro SuperSport 3 -125","Astro SuperSport 4 -126","Match TV Russia -127","TVP Sport Poland -128","Polsat Sport News Poland -129","Sky sports Premier League -130","Telemundo -131","Univision -132","Unimas -133","Arena Sport 1 Premium -134","Arena Sport 2 Premium -135","Match Football 1 Russia -136","Match Football 2 Russia -137","Match Football 3 Russia -138","Arena Sport 3 Premium -139","Sport 1 Israel -140","Sport 2 Israel -141","Sport 3 Israel -142","Sport 4 Israel -143","Sport 5 Israel -144","Sport 5 PLUS Israel -145","Sport 5 Live Israel -146","Sport 5 Star Israel -147","Sport 5 Gold Israel -148","ESPN SUR -149","ESPN2 SUR -150","CANAL_Por Determinar-151","CANAL_Por Determinar-152","CANAL_Por Determinar-153","CANAL_Por Determinar-154","CANAL_Por Determinar-155","CANAL_Por Determinar-156","CANAL_Por Determinar-157","CANAL_Por Determinar-158","CANAL_Por Determinar-159","CANAL_Por Determinar-160","CANAL_Por Determinar-161","CANAL_Por Determinar-162","CANAL_Por Determinar-163","CANAL_Por Determinar-164","CANAL_Por Determinar-165","CANAL_Por Determinar-166","CANAL_Por Determinar-167","CANAL_Por Determinar-168","CANAL_Por Determinar-169","CANAL_Por Determinar-170","CANAL_Por Determinar-171","CANAL_Por Determinar-172","CANAL_Por Determinar-173","CANAL_Por Determinar-174","CANAL_Por Determinar-175","CANAL_Por Determinar-176","CANAL_Por Determinar-177","CANAL_Por Determinar-178","CANAL_Por Determinar-179","CANAL_Por Determinar-180","CANAL_Por Determinar-181","CANAL_Por Determinar-182","CANAL_Por Determinar-183","CANAL_Por Determinar-184","CANAL_Por Determinar-185","CANAL_Por Determinar-186","CANAL_Por Determinar-187","CANAL_Por Determinar-188","CANAL_Por Determinar-189","CANAL_Por Determinar-190","CANAL_Por Determinar-191","CANAL_Por Determinar-192","CANAL_Por Determinar-193","CANAL_Por Determinar-194","CANAL_Por Determinar-195","CANAL_Por Determinar-196","CANAL_Por Determinar-197","CANAL_Por Determinar-198","CANAL_Por Determinar-199","CANAL_Por Determinar-200","CANAL_Por Determinar-201","CANAL_Por Determinar-202","CANAL_Por Determinar-203","CANAL_Por Determinar-204","CANAL_Por Determinar-205","CANAL_Por Determinar-206","CANAL_Por Determinar-207","CANAL_Por Determinar-208","CANAL_Por Determinar-209","CANAL_Por Determinar-210","CANAL_Por Determinar-211","CANAL_Por Determinar-212","CANAL_Por Determinar-213","CANAL_Por Determinar-214","CANAL_Por Determinar-215","CANAL_Por Determinar-216","CANAL_Por Determinar-217","CANAL_Por Determinar-218","CANAL_Por Determinar-219","CANAL_Por Determinar-220","CANAL_Por Determinar-221","CANAL_Por Determinar-222","CANAL_Por Determinar-223","CANAL_Por Determinar-224","CANAL_Por Determinar-225","CANAL_Por Determinar-226","CANAL_Por Determinar-227","CANAL_Por Determinar-228","CANAL_Por Determinar-229","CANAL_Por Determinar-230","CANAL_Por Determinar-231","CANAL_Por Determinar-232","CANAL_Por Determinar-233","CANAL_Por Determinar-234","CANAL_Por Determinar-235","CANAL_Por Determinar-236","CANAL_Por Determinar-237","CANAL_Por Determinar-238","CANAL_Por Determinar-239","CANAL_Por Determinar-240","CANAL_Por Determinar-241","CANAL_Por Determinar-242","CANAL_Por Determinar-243","CANAL_Por Determinar-244","CANAL_Por Determinar-245","CANAL_Por Determinar-246","CANAL_Por Determinar-247","CANAL_Por Determinar-248","CANAL_Por Determinar-249","CANAL_Por Determinar-250","CANAL_Por Determinar-251","CANAL_Por Determinar-252","CANAL_Por Determinar-253","CANAL_Por Determinar-254","CANAL_Por Determinar-255","CANAL_Por Determinar-256","CANAL_Por Determinar-257","CANAL_Por Determinar-258","CANAL_Por Determinar-259","CANAL_Por Determinar-260","CANAL_Por Determinar-261","CANAL_Por Determinar-262","CANAL_Por Determinar-263","CANAL_Por Determinar-264","CANAL_Por Determinar-265","CANAL_Por Determinar-266","CANAL_Por Determinar-267","CANAL_Por Determinar-268","CANAL_Por Determinar-269","CANAL_Por Determinar-270","CANAL_Por Determinar-271","CANAL_Por Determinar-272","CANAL_Por Determinar-273","CANAL_Por Determinar-274","CANAL_Por Determinar-275","CANAL_Por Determinar-276","CANAL_Por Determinar-277","CANAL_Por Determinar-278","CANAL_Por Determinar-279","CANAL_Por Determinar-280","CANAL_Por Determinar-281","StarzPlay CricLife 3 HD -282","StarzPlay CricLife 2 HD -283","StarzPlay CricLife 1 HD -284","CANAL_Por Determinar-285","CANAL_Por Determinar-286","CANAL_Por Determinar-287","ESPNews -288","Sport TV4 Portugal -289","Sport TV5 Portugal -290","Sport TV6 Portugal -291","Gol Mundial 1 -292","Reelz Channel -293","Science Channel -294","Adult Swim -295","Hallmark Movies & Mysterie -296","Fox Business -297","FXX USA -298","Magnolia Network -299","CW USA -300","Freeform -301","A&E USA -302","AMC USA -303","Animal Planet -304","BBC America (BBCA) -305","BET USA -306","Bravo USA -307","CBS Sports Network (CBSSN) -308","CNBC USA -309","Comedy Central -310","Discovery Life Channel -311","Disney Channel -312","Discovery Channel -313","Disney XD -314","E! Entertainment Television -315","ESPNU USA -316","FX USA -317","GOLF Channel USA -318","Game Show Network -319","The Hallmark Channel -320","HBO USA -321","History USA -322","Headline News -323","Investigation Discovery (ID USA) -324","ION USA -325","Lifetime Network -326","MSNBC -327","National Geographic (NGC) -328","NICK JR -329","NICK -330","Oprah Winfrey Network (OWN) -331","Oxygen True Crime -332","Showtime USA -333","Paramount Network -334","Starz -335","TBS USA -336","TLC -337","TNT USA -338","Cartoon Network -339","Travel Channel -340","TruTV USA -341","TVLAND -342","USA Network -343","VH1 USA -344","CNN USA -345","Willow Cricket -346","Fox News -347","Dave -348","BBC News Channel HD -349","ITV 1 UK -350","ITV 2 UK -351","ITV 3 UK -352","ITV 4 UK -35","Channel 4 UK -354","Channel 5 UK -355","BBC One UK -356","BBC Two UK -357","BBC Three UK -358","BBC Four UK -359","5 USA -360","Sky Witness HD -361","Sky Atlantic -362","E4 Channel -363","RTE 1 -364","RTE 2 -365","Sky Sports News UK -366","MTV UK -367","SuperSport Cricket -368","Fox Cricket -369","Astro Cricket -370","MTV USA -371","beIN SPORTS en Espanol -372","SYFY USA -373","Cinemax USA -374","ESPN Deportes -375","WWE Network -376","MUTV UK -377","Veronica NL Netherland -378","ESPN 1 NL -379","Benfica TV PT -380","FX Movie Channel -381","CANAL_Por Determinar-382","Ziggo Sport Docu NL -383","The Food Network -384","SEC Network USA -385","ESPN 2 NL -386","ESPN Premium Argentina -387","TNT Sports Argentina -388","Lifetime Movies Network -389","RTL7 Netherland -390","VTV+ Uruguay -391","Win Sports+ Columbia -392","Ziggo Sport Select NL -393","The Weather Channel -394","MATCh! BOETs Russia -395","Ziggo Sport Racing NL -396","BIG TEN Network (BTN USA) -397","Ziggo Sport Voetbal NL -398","MLB Network USA -399","Digi Sport 1 Romania -400","Digi Sport 2 Romania -401","Digi Sport 3 Romania -402","Digi Sport 4 Romania -403","NBA TV USA -404","NFL Network -405","Sportsnet Ontario -406","Sportsnet West -407","Sportsnet East -408","Sportsnet 360 -409","Sportsnet World -410","Sportsnet One -411","SuperSport Grandstand -412","SuperSport PSL -413","SuperSport Premier league -414","SuperSport LaLiga -415","SuperSport Variety 1 -416","SuperSport Variety 2 -417","SuperSport Variety 3 -418","SuperSport Variety 4 -419","SuperSport Action -420","SuperSport Rugby -421","SuperSport Golf -422","SuperSport Tennis -423","SuperSport Motorsport -424","BeIN SPORTS USA -425","DAZN 1 Bar DE -426","DAZN 2 Bar DE -427","Eleven Sports 3 Poland -428","Arena Sport 1 Serbia -429","Arena Sport 2 Serbia -430","Arena Sport 3 Serbia -431","Arena Sport 1 Croatia -432","Arena Sport 2 Croatia -433","Arena Sport 3 Croatia -434","Movistar Liga de Campeones -435","Movistar Deportes Spain -436","#0 Spain -437","Movistar Deportes 2 Spain -438","Orange Sport 1 Romania -439","Orange Sport 2 Romania -440","Orange Sport 3 Romania -441","Orange Sport 4 Romania -442","Polsat News Poland -443","TVN24 Poland -444","DAZN 1 Spain -445","DAZN 2 Spain -446","DAZN 3 Spain -447","DAZN 4 Spain -448","Sky Sports MIX UK -449","PTV Sports -450","Viaplay Sports 1 UK -451","TVP INFO -452","Sport Klub HD Serbia -453","Sport TV3 Portugal -454","Eleven Sports 1 Portugal -455","Eleven Sports 2 Portugal -456","Eleven Sports 3 Portugal -457","Eleven Sports 4 Portugal -458","Eleven Sports 5 Portugal -459","Sky Sport Football Italy -460","Sky Sport UNO Italy -461","Sky Sport Arena Italy -462","Canal+ Foot France -463","Canal+ Sport360 -464","Diema Sport Bulgaria -465","Diema Sport 2 Bulgaria -466","Diema Sport 3 Bulgaria -467","Nova Sport Bulgaria -468","Eurosport 1 Bulgaria -469","Eurosport 2 Bulgaria -470","Ring Bulgaria -471","Max Sport 1 Bulgaria -472","Max Sport 2 Bulgaria -473","Max Sport 3 Bulgaria -474","Max Sport 4 Bulgaria -475","BNT 1 Bulgaria -476","BNT 2 Bulgaria -477","BNT 3 Bulgaria -478","bTV Bulgaria -479","Nova TV Bulgaria -480","bTV Action Bulgaria -481","Diema Bulgaria -482","FOX HD Bulgaria -483","bTV Lady Bulgaria -484","Diema Family Bulgaria -485","Canal+ Sport 1 Afrique -486","Canal+ Sport 2 Afrique -487","Canal+ Sport 3 Afrique -488","Canal+ Sport 4 Afrique -489","Canal+ Sport 5 Afrique -490","beIN SPORTS Australia 1 -491","beIN SPORTS Australia 2 -492","beIN SPORTS Australia 3 -493","beIN Sports MAX 4 France -494","beIN Sports MAX 5 France -495","beIN Sports MAX 6 France -496","beIN Sports MAX 7 France -497","beIN Sports MAX 8 France -498","beIN Sports MAX 9 France -499","beIN Sports MAX 10 France -500","18+ (Player-01) -501","18+ (Player-02) -502","18+ (Player-03) -503","18+ (Player-04) -504","18+ (Player-05) -505","18+ (Player-06) -506","18+ (Player-07) -507","18+ (Player-08) -508","18+ (Player-09) -509","18+ (Player-10) -510","18+ (Player-11) -511","18+ (Player-12) -512","18+ (Player-13) -513","18+ (Player-14) -514","18+ (Player-15) -515","18+ (Player-16) -516","18+ (Player-17) -517","18+ (Player-18) -518","18+ (Player-19) -519","18+ (Player-20) -520","#Vamos Spain -521","Barca TV Spain -522","Real Madrid TV Spain -523","EuroSport 1 Spain -524","EuroSport 2 Spain -525","Movistar Deportes 3 Spain -526","Movistar Deportes 4 Spain -527","Movistar Golf Spain -528","Teledeporte Spain (TDP) -529","GOL PLAY Spain -530","Antena 3 Spain -531","Telecinco Spain -532","TVE La 1 Spain -533","La Sexta Spain -534","Cuatro Spain -535","TVE La 2 Spain -536","DAZN F1 ES -537","DAZN LaLiga -538","LaLiga SmartBank TV -539","Canal 11 Portugal -540","ONE 1 HD Israel -541","ONE 2 HD Israel -542","Yes Movies Action Israel -543","Yes Movies Kids Israel -544","Yes Movies Comedy Israel -545","Channel 9 Israel -546","CANAL_Por Determinar-547","Channel 11 Israel -548","Channel 12 Israel -549","Viaplay Sports 2 UK -550","Channel 13 Israel -551","Channel 14 Israel -552","HOT3 Israel -553","Sky Sports Racing UK -554","Racing Tv UK -555","Sky Sport Top Event DE -556","Sky Sport Mix DE -557","Sky Sport Bundesliga 1 HD -558","Sky Sport Austria 1 HD -559","TVP1 Poland -560","TVP2 Poland -561","Polsat Poland -562","Motowizja Poland -563","Polsat Film Poland -564","TVN HD Poland -565","Canal+ Premium Poland -566","Canal+ Family Poland -567","FilmBox Premium Poland -568","HBO Poland -569","Canal+ Seriale Poland -570","SportDigital Fussball -571","SuperSport MaXimo 1 -572","Match Premier Russia -573","Sky Sports Golf Italy -574","Sky Sport MotoGP Italy -575","Sky Sport Tennis Italy -576","Sky Sport F1 Italy -577","CANAL_Por Determinar-578","Arena Sport 1 BiH -579","Arena Sport 4 Croatia -580","Arena Sport 4 Serbia -581","Nova Sport Serbia -582","Prima Sport 1 -583","Prima Sport 2 -584","Prima Sport 3 -585","Prima Sport 4 -586","Sky Sport Select NZ -587","Sky Sport 1 NZ -588","Sky Sport 2 NZ -589","Sky Sport 3 NZ -590","Sky Sport 4 NZ -591","Sky Sport 5 NZ -592","Sky Sport 6 NZ -593","Sky Sport 7 NZ -594","Sky Sport 8 NZ -595","Sky Sport 9 NZ -596","Viaplay Xtra UK -597","Willow XTRA -598","Nova Sports Premier League Greece -599","Abu Dhabi Sports 1 UAE -600","Abu Dhabi Sports 2 UAE -601","CTV Canada -602","CANAL_Por Determinar-603","Dubai Sports 1 UAE -604","Dubai Sports 2 UAE -605","Dubai Sports 3 UAE -606","Dubai Racing 1 UAE -607","Dubai Racing 2 UAE -608","Abu Dhabi Sports 1 Premium -609","Abu Dhabi Sports 2 Premium -610","OnTime Sports -611","OnTime Sports 2 -612","Newsmax USA -613","SSC Sport 1 -614","SSC Sport 2 -615","SSC Sport 3 -616","SSC Sport 4 -617","SSC Sport 5 -618","SSC Sport Extra 1 -619","SSC Sport Extra 2 -620","SSC Sport Extra 3 -621","Cosmote Sport 1 HD -622","Cosmote Sport 2 HD -623","Cosmote Sport 3 HD -624","Cosmote Sport 4 HD -625","Cosmote Sport 5 HD -626","Cosmote Sport 6 HD -627","Cosmote Sport 7 HD -628","Cosmote Sport 8 HD -629","Cosmote Sport 9 HD -630","Nova Sports 1 Greece -631","Nova Sports 2 Greece -632","Nova Sports 3 Greece -633","Nova Sports 4 Greece -634","Nova Sports 5 Greece -635","Nova Sports 6 Greece -636","Nova Sports Start Greece -637","Nova Sports Prime Greece -638","Nova Sports News Greece -639","Sport1+ Germany -640","Sport1 Germany -641","TNT Sports HD Chile -642","FOX Deportes USA -643","TCM USA -644","L'Equipe France -645","MAVTV USA -646","CMT USA -647","Boomerang -648","Nicktoons -649","TeenNick -650","Destination America -651","Disney JR -652","POP TV USA -653","MY9TV USA -654","WETV USA -655","IFC TV USA -656","Discovery Family -657","Sundance TV -658","VICE TV -659","TV ONE USA -660","Motor Trend -661","METV USA -662","NHL Network USA -663","ACC Network USA -664","FYI -665","ACC Network USA -666","Longhorn Network USA -667","Universal Kids USA -668","Crime+ Investigation USA -669","S4C UK -670","Sky Cinema Premiere UK -671","Sky Cinema Select UK -672","Sky Cinema Hits UK -673","Sky Cinema Greats UK -674","Sky Cinema Animation UK -675","Sky Cinema Family UK -676","Sky Cinema Action UK -677","CANAL_Por Determinar-678","Sky Cinema Thriller UK -679","CANAL_Por Determinar-680","Sky Cinema Sci-Fi Horror UK -681","Sky Showcase UK -682","Sky Arts UK -683","Sky Comedy UK -684","Sky Crime -685","Sky History -686","Gold UK -687","Film4 UK -688","HBO2 USA -689","HBO Comedy USA -690","HBO Family USA -691","HBO Latino USA -692","HBO Signature USA -693","HBO Zone USA -694","CANAL_Por Determinar-695","Comet USA -696","Cooking Channel USA -697","TMC Channel USA -698","CBC CA -699","Tennis+ 1 -700","Tennis+ 2 -701","Tennis+ 3 -702","Tennis+ 4 -703","Tennis+ 5 -704","Tennis+ 6 -705","Tennis+ 7 -706","Tennis+ 8 -707","Tennis+ 9 -708","Tennis+ 10 -709","Tennis+ 11 -710","Tennis+ 12 -711","Tennis+ 13 -712","Tennis+ 14 -713","Tennis+ 15 -714","Cleo TV -715","Sporting TV Portugal -716","AXN Movies Portugal -717","Porto Canal Portugal -718","RTP 1 Portugal -719","RTP 2 Portugal -720","RTP 3 Portugal -721","SIC Portugal -722","TVI Portugal -723","TVI Reality Portugal -724","Arte DE -725","3sat DE -726","BBC 1 DE -727","ZDF Info DE -728","SAT.1 DE -729","ProSieben (PRO7) DE -730","Kabel Eins (Kabel 1) DE -731","Sixx DE -732","MDR DE -733","WDR DE -734","SWR DE -735","NDR DE -736","BR Fernsehen DE -737","SUPER RTL DE -738","SR Fernsehen DE -739","HR Fernsehen DE -740","Ten Sports PK -741","AXS TV USA -742","Galavision USA -743","Fashion TV -744","Nat Geo Wild USA -745","TYC Sports Argentina -746","C More Football Sweden -747","COZI TV USA -748","Mundotoro TV Spain -749","C SPAN 1 -750","FETV - Family Entertainment Television -751","Grit Channel -752","NBC Sports Bay Area -753","NBC Sports Boston -754","NBC Sports California -755","FOX Soccer Plus -756","Fight Network -757","Fox Sports 2 USA -758","SportsNet New York (SNY) -759","Globo SP -760","Globo RIO -761","NESN USA -762","YES Network USA -763","Spectrum Sportsnet LA -764","MSG USA -765","ABCNY USA -766","CBSNY USA -767","FOXNY USA -768","NBCNY USA -769","Marquee Sports Network -770","New! CWPIX 11 -771","CANAL_Por Determinar-772","CANAL_Por Determinar-773","CANAL_Por Determinar-774","Fox Weather Channel -775","NBC Sports Chicago -776","NBC Sports Philadelphia -777","NBC Sports Washington -778","Max Sport 1 Croatia -779","Max Sport 2 Croatia -780","Alkass One -781","Alkass Two -782","Alkass Three -783","Alkass Four -784","ABS-CBN -785","DSTV Mzansi Magic -786","CANAL_Por Determinar-787","Fox Sports 2 Argentina -788","Fox Sports 3 Argentina -789","CANAL_Por Determinar-790","CANAL_Por Determinar-791","CANAL_Por Determinar-792","CANAL_Por Determinar-793","CANAL_Por Determinar-794","CANAL_Por Determinar-795","CANAL_Por Determinar-796","CANAL_Por Determinar-797","CANAL_Por Determinar-798","CANAL_Por Determinar-799","6'eren Denmark -800","DR1 Denmark -801","DR2 Denmark -802","Kanal 4 Denmark -803","Kanal 5 Denmark -804","CANAL9 Denmark -805","MTV Denmark -806","TV2 Bornholm Denmark -807","TV2 Sport X Denmark -808","TV3 Sport Denmark -809","TV2 Sport Denmark -810","C More Stars Sweden -811","C More First Sweden -812","C More Hits Sweden -813","C More Series Sweden -814","V Film Premiere -815","V Film Family -816","TV2 Denmark -817","TV2 Zulu -818","TV3+ Denmark -819","FOX Sports 502 AU -820","FOX Sports 503 AU -821","CANAL_Por Determinar-822","FOX Sports 505 AU -823","CANAL_Por Determinar-824","FOX Sports 507 AU -825","Liverpool TV (LFC TV) -826","DSTV M-Net -827","DSTV kykNET & kie -828","MASN USA -829","Fox Sports Premium MX -830","Citytv -831","CBC CA -832","TVA Sports -833","TVA Sports 2 -834","Noovo CA -835","Global CA -836","Yes TV CA -837","CTV 2 Canada -838","RDS CA -839","RDS 2 CA -840","RDS Info CA -841","CANAL_Por Determinar-842","CANAL_Por Determinar-843","CANAL_Por Determinar-844","CANAL_Por Determinar-845","CANAL_Por Determinar-846","CANAL_Por Determinar-847","CANAL_Por Determinar-848","CANAL_Por Determinar-849","Rai 1 Italy -850","Rai 2 Italy -851","Rai 3 Italy -852","Rai 3 Italy -853","Italia 1 Italy -854","La7 Italy -855","LA7d HD+ Italy -856","20 Mediaset Italy -857","Rai Premium Italy -858","CANAL_Por Determinar-859","Sky Cinema Uno Italy -860","Sky Cinema Action Italy -861","CANAL_Por Determinar-862","Sky Cinema Uno +24 Italy -863","CANAL_Por Determinar-864","Sky Cinema Family Italy -865","CANAL_Por Determinar-866","Sky Cinema Drama Italy -867","CANAL_Por Determinar-868","Sky Sport 24 Italy -869","CANAL_Por Determinar-870","Sky Calcio 1 (251) Italy -871","CANAL_Por Determinar-872","Sky Calcio 3 (253) Italy -873","CANAL_Por Determinar-874","CANAL_Por Determinar-875","CANAL_Por Determinar-876","Sky Calcio 7 (257) Italy -877","EuroSport 1 Italy -878","EuroSport 2 Italy -879","Sky Serie Italy -880","Sky UNO Italy -881","Rai Sport Italy -882","CANAL_Por Determinar-883","CANAL_Por Determinar-884","CANAL_Por Determinar-885","CANAL_Por Determinar-886","CANAL_Por Determinar-887","CANAL_Por Determinar-888","CANAL_Por Determinar-889","CANAL_Por Determinar-890","CANAL_Por Determinar-891","CANAL_Por Determinar-892","CANAL_Por Determinar-893","CANAL_Por Determinar-894","CANAL_Por Determinar-895","CANAL_Por Determinar-896","CANAL_Por Determinar-897","CANAL_Por Determinar-898","CANAL_Por Determinar-899","CANAL_Por Determinar-900","CANAL_Por Determinar-901","CANAL_Por Determinar-902","CANAL_Por Determinar-903","CANAL_Por Determinar-904","CANAL_Por Determinar-905","CANAL_Por Determinar-906","CANAL_Por Determinar-907","CANAL_Por Determinar-908","CANAL_Por Determinar-909","CANAL_Por Determinar-910","CANAL_Por Determinar-911","CANAL_Por Determinar-912","CANAL_Por Determinar-913","CANAL_Por Determinar-914","CANAL_Por Determinar-915","CANAL_Por Determinar-916","CANAL_Por Determinar-917","CANAL_Por Determinar-918","CANAL_Por Determinar-919","CANAL_Por Determinar-920","CANAL_Por Determinar-921","CANAL_Por Determinar-922","CANAL_Por Determinar-923","CANAL_Por Determinar-924","CANAL_Por Determinar-925","CANAL_Por Determinar-926","CANAL_Por Determinar-927","CANAL_Por Determinar-928","CANAL_Por Determinar-929","CANAL_Por Determinar-930","CANAL_Por Determinar-931","CANAL_Por Determinar-932","CANAL_Por Determinar-933","CANAL_Por Determinar-934","CANAL_Por Determinar-935","CANAL_Por Determinar-936","CANAL_Por Determinar-937","CANAL_Por Determinar-938","CANAL_Por Determinar-939","CANAL_Por Determinar-940","CANAL_Por Determinar-941","CANAL_Por Determinar-942","CANAL_Por Determinar-943","CANAL_Por Determinar-944","CANAL_Por Determinar-945","CANAL_Por Determinar-946","CANAL_Por Determinar-947","CANAL_Por Determinar-948","CANAL_Por Determinar-949","CANAL_Por Determinar-950","CANAL_Por Determinar-951","CANAL_Por Determinar-952","CANAL_Por Determinar-953","CANAL_Por Determinar-954","CANAL_Por Determinar-955","CANAL_Por Determinar-956","CANAL_Por Determinar-957","CANAL_Por Determinar-958","CANAL_Por Determinar-959","CANAL_Por Determinar-960","CANAL_Por Determinar-961","CANAL_Por Determinar-962","CANAL_Por Determinar-963","CANAL_Por Determinar-964","CANAL_Por Determinar-965","CANAL_Por Determinar-966","CANAL_Por Determinar-967","CANAL_Por Determinar-968","CANAL_Por Determinar-969","CANAL_Por Determinar-970","CANAL_Por Determinar-971","CANAL_Por Determinar-972","CANAL_Por Determinar-973","CANAL_Por Determinar-974","CANAL_Por Determinar-975","CANAL_Por Determinar-976","CANAL_Por Determinar-977","CANAL_Por Determinar-978","CANAL_Por Determinar-979","CANAL_Por Determinar-980","CANAL_Por Determinar-981","CANAL_Por Determinar-982","CANAL_Por Determinar-983","CANAL_Por Determinar-984","CANAL_Por Determinar-985","CANAL_Por Determinar-986","CANAL_Por Determinar-987","CANAL_Por Determinar-988","CANAL_Por Determinar-989","CANAL_Por Determinar-990","CANAL_Por Determinar-991","CANAL_Por Determinar-992","CANAL_Por Determinar-993","CANAL_Por Determinar-994","CANAL_Por Determinar-995","CANAL_Por Determinar-996","CANAL_Por Determinar-997","CANAL_Por Determinar-998","CANAL_Por Determinar-999","CANAL_Por Determinar-1000","CANAL_Por Determinar-1001","CANAL_Por Determinar-1002","CANAL_Por Determinar-1003","CANAL_Por Determinar-1004","CANAL_Por Determinar-1005","CANAL_Por Determinar-1006","CANAL_Por Determinar-1007","CANAL_Por Determinar-1008","CANAL_Por Determinar-1009","CANAL_Por Determinar-1010","CANAL_Por Determinar-1011","CANAL_Por Determinar-1012","CANAL_Por Determinar-1013","CANAL_Por Determinar-1014","CANAL_Por Determinar-1015","CANAL_Por Determinar-1016","CANAL_Por Determinar-1017","CANAL_Por Determinar-1018","CANAL_Por Determinar-1019","CANAL_Por Determinar-1020","CANAL_Por Determinar-1021","CANAL_Por Determinar-1022","CANAL_Por Determinar-1023","CANAL_Por Determinar-1024","CANAL_Por Determinar-1025","CANAL_Por Determinar-1026","CANAL_Por Determinar-1027","CANAL_Por Determinar-1028","CANAL_Por Determinar-1029","CANAL_Por Determinar-1030","CANAL_Por Determinar-1031","CANAL_Por Determinar-1032","CANAL_Por Determinar-1033","CANAL_Por Determinar-1034","CANAL_Por Determinar-1035","CANAL_Por Determinar-1036","CANAL_Por Determinar-1037","CANAL_Por Determinar-1038","CANAL_Por Determinar-1039","CANAL_Por Determinar-1040","CANAL_Por Determinar-1041","CANAL_Por Determinar-1042","CANAL_Por Determinar-1043","CANAL_Por Determinar-1044","CANAL_Por Determinar-1045","CANAL_Por Determinar-1046","CANAL_Por Determinar-1047","CANAL_Por Determinar-1048","CANAL_Por Determinar-1049","CANAL_Por Determinar-1050"
+    ];
+
+    function createButtons(from, to) {
+      const wrap = document.getElementById('channelsList');
+      for (let i = from; i <= to; i++) {
+        const b = document.createElement('button');
+        b.className = 'btn';
+        b.textContent = channelNames[i-1] || `Canal ${i}`;
+        b.dataset.channel = i;
+        b.onclick = () => load(i, b);
+        wrap.appendChild(b);
+      }
+    }
+
+    function load(n, button) {
+      document.getElementById('player').src = `https://miztv.top/total/stream-${n}.php`;
+      document.getElementById('now-playing').textContent = button.textContent;
+      if (currentActiveButton) currentActiveButton.classList.remove('active');
+      button.classList.add('active');
+      currentActiveButton = button;
+    }
+
+    function goFullscreen() {
+      const p = document.getElementById('player');
+      (p.requestFullscreen || p.mozRequestFullScreen || p.webkitRequestFullscreen || p.msRequestFullscreen).call(p);
+    }
+
+    createButtons(1, total);
+    document.addEventListener('DOMContentLoaded', () => {
+      load(1, document.querySelector('.btn'));
+    });
+
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      document.querySelectorAll('.btn').forEach(btn => {
+        const name = btn.textContent.toLowerCase();
+        const num = btn.dataset.channel;
+        btn.style.display = name.includes(term) || num.includes(term) ? 'block' : 'none';
+      });
+    });
+  </script>
+</body>
+</html>
